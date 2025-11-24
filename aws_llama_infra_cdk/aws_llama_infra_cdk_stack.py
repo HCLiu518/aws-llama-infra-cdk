@@ -59,13 +59,16 @@ class AwsLlamaInfraCdkStack(Stack):
             f"  --gpu-memory-utilization 0.95"
         )
 
-        # 6. The Instance: g5.xlarge
+        # Get the Key Pair
+        key_pair = ec2.KeyPair.from_key_pair_name(self, "KeyPair", "aws-llama-key") # The key pair is created manually
+
+        # Create the Instance: g5.xlarge
         instance = ec2.Instance(self, "Llama3Instance",
             instance_type=ec2.InstanceType("g5.xlarge"),
             machine_image=ami,
             vpc=vpc,
             security_group=security_group,
-            key_name="aws-llama-key", # Must match the key you created manually
+            key_pair=key_pair,
             user_data=user_data,
             block_devices=[
                 ec2.BlockDevice(
@@ -75,5 +78,5 @@ class AwsLlamaInfraCdkStack(Stack):
             ]
         )
 
-        # 7. Output the IP
+        # Output the IP
         CfnOutput(self, "InstancePublicIP", value=instance.instance_public_ip)
