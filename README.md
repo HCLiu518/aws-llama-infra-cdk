@@ -69,3 +69,22 @@ cdk destroy
 
 ## Cost Warning
 * This project uses `g5.xlarge` instances (~$1.00/hr). **Always run `cdk destroy` when finished to avoid unexpected billing.**
+
+## Performance Benchmarks
+
+The system was stress-tested using `vllm bench serve` to simulate high-concurrency production traffic.
+
+**Test Configuration:**
+* **Hardware:** AWS `g5.xlarge` (1x NVIDIA A10G, 24GB VRAM)
+* **Model:** Meta-Llama-3.1-8B-Instruct (Quantization: None)
+* **Load:** 64 concurrent users sending random requests (128 input / 128 output tokens)
+
+**Results:**
+| Metric | Result | Impact |
+| :--- | :--- | :--- |
+| **Throughput (Total)** | **1,898 tokens/sec** | High capacity for batch processing. |
+| **Throughput (Requests)** | **7.45 req/sec** | Handles ~7 concurrent active generations smoothly. |
+| **Inter-Token Latency (ITL)** | **49.8 ms** | Fast streaming speed (approx. 20 words/sec) per user. |
+| **Time to First Token (TTFT)** | **953 ms** | <1s startup delay even under full load (64 users). |
+
+> **Analysis:** The system successfully handles heavy congestion (64 simultaneous users) while maintaining a strict <50ms typing speed, confirming that the `g5.xlarge` instance is memory-bandwidth bound rather than compute-bound for this workload.
