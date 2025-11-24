@@ -1,58 +1,71 @@
+# Ephemeral AI Inference Platform (AWS CDK + vLLM)
 
-# Welcome to your CDK Python project!
+A scalable, Infrastructure-as-Code (IaC) solution for deploying Large Language Models (LLMs) on AWS. This project provisions ephemeral GPU clusters to host **Meta-Llama-3.1-8B** using **vLLM** for high-throughput inference.
 
-This is a blank project for CDK development with Python.
+## Architecture
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+* **Infrastructure:** AWS CDK (Python)
+* **Compute:** Amazon EC2 `g5.xlarge` (NVIDIA A10G GPU)
+* **Engine:** vLLM (with PagedAttention)
+* **Model:** Meta-Llama-3.1-8B-Instruct
+* **Security:** VPC-isolated with IP-restricted Security Groups
 
-This project is set up like a standard Python project.  The initialization
-process also creates a virtualenv within this project, stored under the `.venv`
-directory.  To create the virtualenv it assumes that there is a `python3`
-(or `python` for Windows) executable in your path with access to the `venv`
-package. If for any reason the automatic creation of the virtualenv fails,
-you can create the virtualenv manually.
+## Key Features
 
-To manually create a virtualenv on MacOS and Linux:
+* **Automated Provisioning:** One-click deploy/destroy cycle using AWS CDK.
+* **Memory Optimization:** Solved Llama-3.1's 128k context OOM crash by tuning `--max-model-len` and `--gpu-memory-utilization` flags.
+* **Dockerized Deployment:** Uses Cloud-Init (`user_data`) to bootstrap the vLLM container on instance startup.
+* **Cost Efficiency:** Architecture designed for ephemeral usage (destroy after use) to minimize GPU hourly costs.
 
-```
-$ python -m venv .venv
-```
+## Prerequisites
 
-After the init process completes and the virtualenv is created, you can use the following
-step to activate your virtualenv.
+* AWS CLI (configured with Admin permissions)
+* AWS CDK CLI (`npm install -g aws-cdk`)
+* Python 3.8+
+* Hugging Face Access Token (Read permissions)
 
-```
-$ source .venv/bin/activate
-```
+## Deployment Guide
 
-If you are a Windows platform, you would activate the virtualenv like this:
+### 1. Install Dependencies
 
-```
-% .venv\Scripts\activate.bat
-```
-
-Once the virtualenv is activated, you can install the required dependencies.
-
-```
-$ pip install -r requirements.txt
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
-At this point you can now synthesize the CloudFormation template for this code.
+### 2. Configure Environment
 
+* Export your Hugging Face token and target region:
+
+```bash
+export HF_TOKEN="hf_your_token_here"
+export CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+export CDK_DEFAULT_REGION="us-east-2"
 ```
-$ cdk synth
+
+### 3. Deploy
+
+```bash
+cdk deploy
 ```
 
-To add additional dependencies, for example other CDK libraries, just add
-them to your `setup.py` file and rerun the `pip install -r requirements.txt`
-command.
+* The stack will output the `InstancePublicIP` upon completion.
 
-## Useful commands
+### 4. Test Inference
 
- * `cdk ls`          list all stacks in the app
- * `cdk synth`       emits the synthesized CloudFormation template
- * `cdk deploy`      deploy this stack to your default AWS account/region
- * `cdk diff`        compare deployed stack with current state
- * `cdk docs`        open CDK documentation
+* Please note that docker will take a while to spin up first time because of downloading the large images.
+* Update the IP in `inference_client.py` and run:
 
-Enjoy!
+```bash
+python inference_client.py
+```
+
+### 5. Teardown (Stop Billing)
+
+```bash
+cdk destroy
+```
+
+## Cost Warning
+* This project uses `g5.xlarge` instances (~$1.00/hr). **Always run `cdk destroy` when finished to avoid unexpected billing.**
